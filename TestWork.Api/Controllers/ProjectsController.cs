@@ -1,0 +1,351 @@
+﻿using System.Collections.Immutable;
+using System.Net;
+using Microsoft.AspNetCore.Mvc;
+using TestWork.Api.Models;
+using TestWork.Api.Models.Projects;
+using TestWork.Api.Models.Tasks;
+using TestWork.Api.Models.Users;
+using TestWork.Data.Repositories;
+using TestWork.Entities;
+using TestWork.Repositories;
+
+namespace TestWork.Api.Controllers;
+
+[ApiController]
+[Route("api/projects")]
+public class ProjectsController : ControllerBase
+{
+    private readonly IProjectsRepository _projectsRepository;
+    private readonly IProjectStagesRepository _projectStagesRepository;
+    private readonly IProjectTasksRepository _projectTasksRepository;
+
+    public ProjectsController(
+        IProjectsRepository projectsRepository,
+        IProjectStagesRepository projectStagesRepository,
+        IProjectTasksRepository projectTasksRepository
+    )
+    {
+        _projectsRepository = projectsRepository;
+        _projectStagesRepository = projectStagesRepository;
+        _projectTasksRepository = projectTasksRepository;
+    }
+
+    /// <summary>
+    /// Returns a collection of projects.
+    /// </summary>
+    /// <returns>A collection of projects.</returns>
+    /// <response code="200">Collection of projects.</response>
+    /// <response code="400">An unexpected error.</response>
+    [HttpGet]
+    [ProducesResponseType(typeof(ProjectListItemModel[]), (int)HttpStatusCode.OK)]
+    [ProducesResponseType(typeof(ErrorResponse), (int)HttpStatusCode.BadRequest)]
+    public async Task<IActionResult> GetAsync(
+        string? name,
+        ProjectStatus? status,
+        Guid? supervisorId,
+        string? projectBy,
+        SortDirection sortDirection,
+        int pageIndex,
+        int pageSize)
+    {
+        try
+        {
+            var result = await _projectsRepository.GetAsync(name, status, supervisorId, projectBy,
+                sortDirection switch
+                {
+                    SortDirection.Asc => true,
+                    SortDirection.Desc => false,
+                    _ => true
+                },
+                pageIndex,
+                pageSize);
+
+            var model = new PagedResponse<ProjectListItemModel>
+            {
+                Total = result.Total,
+                Items = result.Items
+                    .Select(project => new ProjectListItemModel
+                    {
+                        Id = project.Id,
+                        Name = project.Name,
+                        Description = project.Description,
+                        Risks = project.Risks,
+                        StartDate = project.StartDate,
+                        EndDate = project.EndDate,
+                        SupervisorId = project.SupervisorId,
+                        ExecutorId = project.ExecutorId,
+                        Status = project.Status,
+                        IsDeleted = project.IsDeleted,
+                        CreatedAt = project.CreatedAt,
+                        UpdatedAt = project.UpdatedAt,
+                        // Stages = (await _projectStagesRepository.GetCountAsync(project.Id)),
+                        // Tasks = (await _projectTasksRepository.GetCountAsync(project.Id)),
+                    }).ToList()
+            };
+            return Ok(result);
+        }
+        catch (Exception exception)
+        {
+            // _logger.LogError(exception, "An error occurred while getting users");
+            return BadRequest(ErrorResponse.UnexpectedError());
+        }
+    }
+
+    /// <summary>
+    /// Retrieves a project by <paramref name="projectId"/>.
+    /// </summary>
+    /// <param name="projectId">The project identifier.</param>
+    /// <returns>A project.</returns>
+    /// <response code="200">A project.</response>
+    /// <response code="400">An unexpected error.</response>
+    /// <response code="404">A project not found by provided identifier.</response>
+    [HttpGet("{projectId:guid}")]
+    [ProducesResponseType(typeof(ProjectModel), (int)HttpStatusCode.OK)]
+    [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+    [ProducesResponseType((int)HttpStatusCode.NotFound)]
+    public async Task<IActionResult> GetByIdAsync([FromRoute] Guid projectId)
+    {
+        var project = await _projectsRepository.GetByIdAsync(projectId);
+
+        if (project == null)
+            return NotFound();
+
+        var stages = await _projectStagesRepository.GetAsync(projectId);
+        var tasks = await _projectTasksRepository.GetAsync(projectId);
+        var model = new ProjectModel
+        {
+            Id = project.Id,
+            Name = project.Name,
+            Description = project.Description,
+            Risks = project.Risks,
+            StartDate = project.StartDate,
+            EndDate = project.EndDate,
+            SupervisorId = project.SupervisorId,
+            ExecutorId = project.ExecutorId,
+            Status = project.Status,
+            Stages = stages.Select(stage => new ProjectStageModel
+            {
+                Id = stage.Id,
+                Stage = stage.Stage,
+                Name = stage.Title
+            }).ToList(),
+            Tasks = tasks.Select(task => new ProjectTaskModel
+            {
+                Id = task.Id,
+                ProjectId = project.Id,
+                Stage = task.Stage,
+                Order = task.Order,
+                Title = task.Title,
+                Start = task.Start,
+                End = task.End,
+                IsDeleted = task.IsDeleted,
+                CreatedAt = task.CreatedAt,
+                UpdatedAt = task.UpdatedAt,
+            }).ToList(),
+            IsDeleted = project.IsDeleted,
+            CreatedAt = project.CreatedAt,
+            UpdatedAt = project.UpdatedAt,
+        };
+
+        return Ok(model);
+    }
+
+    /// <summary>
+    /// Creates project.
+    /// </summary>
+    /// <param name="model">The project creation information.</param>
+    /// <returns>Created project result.</returns>
+    /// <response code="200">Created project result.</response>
+    /// <response code="400">An unexpected error.</response>
+    [HttpPost]
+    [ProducesResponseType(typeof(ProjectCreateResultModel), (int)HttpStatusCode.OK)]
+    [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+    public async Task<IActionResult> CreateAsync([FromBody] ProjectCreateModel model)
+    {
+        try
+        {
+            var project = Project.Create(
+                model.Name,
+                model.Description,
+                model.Risks,
+                model.StartDate,
+                model.EndDate,
+                model.SupervisorId,
+                model.ExecutorId
+            );
+
+            await _projectsRepository.InsertAsync(project);
+
+            return Ok(new ProjectCreateResultModel { Id = project.Id });
+        }
+        catch (Exception exception)
+        {
+            // _logger.LogError(exception, "An error occurred while creating project");
+            return BadRequest(ErrorResponse.UnexpectedError());
+        }
+    }
+
+    /// <summary>
+    /// Updates project.
+    /// </summary>
+    /// <param name="model">The project update information.</param>
+    /// <returns></returns>
+    /// <response code="204">Order successfully updated.</response>
+    /// <response code="400">An unexpected error.</response>
+    /// <response code="404">Order not found.</response>
+    [HttpPut]
+    [ProducesResponseType((int)HttpStatusCode.NoContent)]
+    [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+    [ProducesResponseType((int)HttpStatusCode.NotFound)]
+    public async Task<IActionResult> UpdateAsync([FromBody] ProjectUpdateModel model)
+    {
+        var project = await _projectsRepository.GetByIdAsync(model.Id);
+
+        if (project == null)
+            return NotFound();
+
+        project.Update(
+            model.SupervisorId,
+            model.ExecutorId
+        );
+
+        await _projectsRepository.UpdateAsync(project);
+
+        await UpdateProjectStages(model);
+
+        await UpdateProjectTasks(model);
+
+        return NoContent();
+    }
+
+    private async Task UpdateProjectStages(ProjectUpdateModel model)
+    {
+        var stages = await _projectStagesRepository.GetAsync(model.Id);
+
+        var toAdd = model.Stages.Where(v => !v.Id.HasValue)
+            .ToList();
+        var toRemove = stages.Where(s => model.Stages.All(m => m.Id != s.Id))
+            .ToList();
+        var toUpdate = stages.Where(s => toRemove.All(m => m.Id != s.Id))
+            .ToList();
+
+        foreach (var stage in toRemove)
+        {
+            await _projectStagesRepository.DeleteAsync(stage.Id);
+        }
+
+        foreach (var stage in toAdd)
+        {
+            var newStage = ProjectStage.Create(model.Id, stage.Stage, stage.Name);
+            await _projectStagesRepository.InsertAsync(newStage);
+        }
+
+        foreach (var stage in toUpdate)
+        {
+            var modelStage = model.Stages.Single(m => m.Id == stage.Id);
+            stage.Update(modelStage.Stage, modelStage.Name);
+            await _projectStagesRepository.UpdateAsync(stage);
+        }
+    }
+
+
+    private async Task UpdateProjectTasks(ProjectUpdateModel model)
+    {
+        var tasks = await _projectTasksRepository.GetAsync(model.Id);
+
+        var toAdd = model.Tasks.Where(v => !v.Id.HasValue)
+            .ToList();
+        var toRemove = tasks.Where(s => model.Tasks.All(m => m.Id != s.Id))
+            .ToList();
+        var toUpdate = tasks.Where(s => toRemove.All(m => m.Id != s.Id))
+            .ToList();
+
+        foreach (var task in toRemove)
+        {
+            task.Delete();
+            await _projectTasksRepository.UpdateAsync(task);
+        }
+
+        foreach (var task in toAdd)
+        {
+            var newTask = ProjectTask.Create(
+                model.Id,
+                task.Stage,
+                task.Order,
+                task.Title,
+                task.Start,
+                task.End);
+            await _projectTasksRepository.InsertAsync(newTask);
+        }
+
+        foreach (var task in toUpdate)
+        {
+            var modelTask = model.Tasks.Single(m => m.Id == task.Id);
+            task.Update(
+                modelTask.Stage,
+                modelTask.Order,
+                modelTask.Title,
+                modelTask.Start,
+                modelTask.End);
+            await _projectTasksRepository.UpdateAsync(task);
+        }
+    }
+    
+    /// <summary>
+    /// Deletes project.
+    /// </summary>
+    /// <param name="projectId">The project identifier.</param>
+    /// <response code="204">Project deleted.</response>
+    /// <response code="400">An unexpected error.</response>
+    /// <response code="404">Project not found by provided identifier.</response>
+    [HttpDelete("{projectId:guid}")]
+    [ProducesResponseType((int)HttpStatusCode.NoContent)]
+    [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+    [ProducesResponseType((int)HttpStatusCode.NotFound)]
+    public async Task<IActionResult> DeleteAsync([FromRoute] Guid projectId)
+    {
+        var project = await _projectsRepository.GetByIdAsync(projectId);
+
+        if (project == null)
+            return NotFound();
+
+        if (project.Delete())
+            await _projectsRepository.UpdateAsync(project);
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Retrieves a collection of project stages.
+    /// </summary>
+    /// <param name="projectId">The project identifier.</param>
+    /// <returns>A collection of project stages.</returns>
+    /// <response code="200">A collection of project stages.</response>
+    /// <response code="400">An unexpected error.</response>
+    [HttpGet("{projectId:long}/stages")]
+    [ProducesResponseType(typeof(ProjectStageModel[]), (int)HttpStatusCode.OK)]
+    [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+    public async Task<IActionResult> ListAsync(
+        [FromRoute] long projectId)
+    {
+        throw new NotImplementedException();
+        return Ok();
+    }
+
+    /// <summary>
+    /// Retrieves a collection of project tasks.
+    /// </summary>
+    /// <param name="projectId">The project identifier.</param>
+    /// <returns>A collection of project tasks.</returns>
+    /// <response code="200">A collection of project tasks.</response>
+    /// <response code="400">An unexpected error.</response>
+    [HttpGet("{projectId:long}/tasks")]
+    [ProducesResponseType(typeof(ProjectTaskListItemModel[]), (int)HttpStatusCode.OK)]
+    [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+    public async Task<IActionResult> GetTasksAsync(
+        [FromRoute] long projectId)
+    {
+        throw new NotImplementedException();
+        return Ok();
+    }
+}
