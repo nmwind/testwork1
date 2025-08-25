@@ -78,8 +78,6 @@ public class ProjectsController : ControllerBase
                         IsDeleted = project.IsDeleted,
                         CreatedAt = project.CreatedAt,
                         UpdatedAt = project.UpdatedAt,
-                        // Stages = (await _projectStagesRepository.GetCountAsync(project.Id)),
-                        // Tasks = (await _projectTasksRepository.GetCountAsync(project.Id)),
                     }).ToList()
             };
             return Ok(result);
@@ -322,11 +320,11 @@ public class ProjectsController : ControllerBase
     /// <returns>A collection of project stages.</returns>
     /// <response code="200">A collection of project stages.</response>
     /// <response code="400">An unexpected error.</response>
-    [HttpGet("{projectId:long}/stages")]
+    [HttpGet("{projectId:guid}/stages")]
     [ProducesResponseType(typeof(ProjectStageModel[]), (int)HttpStatusCode.OK)]
     [ProducesResponseType((int)HttpStatusCode.BadRequest)]
     public async Task<IActionResult> ListAsync(
-        [FromRoute] long projectId)
+        [FromRoute] Guid projectId)
     {
         throw new NotImplementedException();
         return Ok();
@@ -339,11 +337,11 @@ public class ProjectsController : ControllerBase
     /// <returns>A collection of project tasks.</returns>
     /// <response code="200">A collection of project tasks.</response>
     /// <response code="400">An unexpected error.</response>
-    [HttpGet("{projectId:long}/tasks")]
+    [HttpGet("{projectId:guid}/tasks")]
     [ProducesResponseType(typeof(ProjectTaskListItemModel[]), (int)HttpStatusCode.OK)]
     [ProducesResponseType((int)HttpStatusCode.BadRequest)]
     public async Task<IActionResult> GetTasksAsync(
-        [FromRoute] long projectId)
+        [FromRoute] Guid projectId)
     {
         throw new NotImplementedException();
         return Ok();
