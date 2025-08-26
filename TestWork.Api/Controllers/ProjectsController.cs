@@ -161,8 +161,9 @@ public class ProjectsController : ControllerBase
         }
         catch (Exception exception)
         {
-            // _logger.LogError(exception, "An error occurred while creating project");
-            return BadRequest(ErrorResponse.UnexpectedError());
+            throw exception;
+            //log error
+            //return BadRequest(ErrorResponse.UnexpectedError());
         }
     }
 
@@ -194,51 +195,7 @@ public class ProjectsController : ControllerBase
 
         await _projectsRepository.UpdateAsync(project);
 
-        await UpdateProjectTasks(model);
-
         return NoContent();
-    }
-
-    private async Task UpdateProjectTasks(ProjectUpdateModel model)
-    {
-        var tasks = await _projectTasksRepository.GetAsync(model.Id);
-
-        var toAdd = model.Tasks.Where(v => !v.Id.HasValue)
-            .ToList();
-        var toRemove = tasks.Where(s => model.Tasks.All(m => m.Id != s.Id))
-            .ToList();
-        var toUpdate = tasks.Where(s => toRemove.All(m => m.Id != s.Id))
-            .ToList();
-
-        foreach (var task in toRemove)
-        {
-            task.Delete();
-            await _projectTasksRepository.UpdateAsync(task);
-        }
-
-        foreach (var task in toAdd)
-        {
-            var newTask = ProjectTask.Create(
-                model.Id,
-                task.Stage,
-                task.Order,
-                task.Title,
-                task.Start,
-                task.End);
-            await _projectTasksRepository.InsertAsync(newTask);
-        }
-
-        foreach (var task in toUpdate)
-        {
-            var modelTask = model.Tasks.Single(m => m.Id == task.Id);
-            task.Update(
-                modelTask.Stage,
-                modelTask.Order,
-                modelTask.Title,
-                modelTask.Start,
-                modelTask.End);
-            await _projectTasksRepository.UpdateAsync(task);
-        }
     }
 
     /// <summary>

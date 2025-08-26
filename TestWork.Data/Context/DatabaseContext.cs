@@ -19,7 +19,7 @@ public class DatabaseContext : DbContext
     public DatabaseContext(DbContextOptions<DatabaseContext> options)
         : base(options)
     {
-    //      Database.EnsureDeleted();
+    // Database.EnsureDeleted();
         Database.EnsureCreated();
     }
 
@@ -29,7 +29,6 @@ public class DatabaseContext : DbContext
 
         BuildUsers(modelBuilder);
         BuildProjects(modelBuilder);
-        // BuildProjectReadModel(modelBuilder);
         BuildProjectStages(modelBuilder);
         BuildProjectTasks(modelBuilder);
 
@@ -87,16 +86,6 @@ public class DatabaseContext : DbContext
                 IsDeleted = false,
             }
         ]);
-    }
-
-    private void BuildProjectReadModel(ModelBuilder modelBuilder)
-    {
-        modelBuilder
-            .Entity<ProjectReadModel>(entity =>
-            {
-                entity.HasNoKey();
-                entity.ToView("lv_projects");
-            });
     }
 
     private static void BuildUsers(ModelBuilder builder)

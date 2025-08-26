@@ -18,6 +18,8 @@ public class Project
 
     private List<string> _stages;
     public IReadOnlyList<string> Stages => _stages.AsReadOnly();
+    private List<ProjectTask> _tasks;
+    public IReadOnlyList<ProjectTask> Tasks => _tasks.AsReadOnly();
 
     public Project(
         Guid id,
@@ -32,7 +34,8 @@ public class Project
         bool isDeleted,
         DateTime createdAt,
         DateTime updatedAt,
-        IReadOnlyList<string> stages)
+        IReadOnlyList<string> stages,
+        IReadOnlyList<ProjectTask> tasks)
     {
         Id = id;
         Name = name;
@@ -47,6 +50,7 @@ public class Project
         CreatedAt = createdAt;
         UpdatedAt = updatedAt;
         _stages = stages.ToList();
+        _tasks = tasks.ToList();
     }
 
     public static Project Create(string name,
@@ -71,7 +75,8 @@ public class Project
             false,
             created,
             created,
-            new List<string>());
+            new List<string>(),
+            new List<ProjectTask>());
     }
 
     public void Update(
@@ -95,7 +100,15 @@ public class Project
     {
         _stages.Clear();
         _stages.AddRange(stages);
-        
+
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateTasks(IReadOnlyCollection<ProjectTask> tasks)
+    {
+        _tasks.Clear();
+        _tasks.AddRange(tasks);
+
         UpdatedAt = DateTime.UtcNow;
     }
 

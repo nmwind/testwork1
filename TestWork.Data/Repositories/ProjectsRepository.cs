@@ -49,7 +49,7 @@ namespace TestWork.Data.Repositories
                     UpdatedAt = entity.UpdatedAt.DateTime
                 })
                 .AsQueryable();
-            
+
             if (!string.IsNullOrEmpty(name))
             {
                 query = query.Where(o => EF.Functions.ILike(o.Name, $"%{name}%"));
@@ -128,6 +128,7 @@ namespace TestWork.Data.Repositories
 
             var entity = await context.Projects
                 .Include(o => o.Stages)
+                .Include(o => o.Tasks)
                 .FirstAsync(o => o.Id == project.Id);
 
             entity.Name = project.Name;
@@ -149,7 +150,57 @@ namespace TestWork.Data.Repositories
                 Title = stageName,
             }).ToList();
 
+            UpdateTasks(context, entity, project);
+
             await context.SaveChangesAsync();
+        }
+
+        private void UpdateTasks(DatabaseContext context, ProjectEntity entity, Project project)
+        {
+            var addedTasks = project.Tasks
+                .Where(o => entity.Tasks!.All(x => x.Id != o.Id))
+                .ToList();
+            var updatedTasks = entity.Tasks!
+                .Where(o => project.Tasks.Any(x => x.Id == o.Id))
+                .ToList();
+            var deletedTasks = entity.Tasks!
+                .Where(o => project.Tasks.All(x => x.Id != o.Id))
+                .ToList();
+
+
+            foreach (var task in addedTasks)
+            {
+                var taskEntity = new ProjectTaskEntity
+                {
+                    Id = task.Id,
+                    ProjectId = task.ProjectId,
+                    Title = task.Title,
+                    Stage = task.Stage,
+                    Order = task.Order,
+                    Start = task.Start,
+                    End = task.End,
+                    IsDeleted = task.IsDeleted,
+                    UpdatedAt = task.UpdatedAt,
+                    CreatedAt = task.CreatedAt,
+                };
+                entity.Tasks!.Add(taskEntity);
+            }
+
+            foreach (var taskEntity in updatedTasks)
+            {
+                var task = project.Tasks.First(o => o.Id == taskEntity.Id);
+
+                taskEntity.Title = task.Title;
+                taskEntity.Stage = task.Stage; 
+                taskEntity.Order = task.Order;
+                taskEntity.Start = task.Start;
+                taskEntity.End = task.End;
+                taskEntity.IsDeleted = task.IsDeleted;
+                taskEntity.CreatedAt = task.CreatedAt;
+                taskEntity.UpdatedAt = task.UpdatedAt;
+            }
+
+            context.Tasks.RemoveRange(deletedTasks);
         }
 
         private static Project? Map(ProjectEntity? entity)
@@ -172,7 +223,26 @@ namespace TestWork.Data.Repositories
                 entity.Stages?
                     .OrderBy(stage => stage.Stage)
                     .Select(stage => stage.Title)
-                    .ToList() ?? []
+                    .ToList() ?? [],
+                entity.Tasks?.Select(task => Map(task)!).ToList() ?? []
+            );
+        }
+
+        private static ProjectTask? Map(ProjectTaskEntity? entity)
+        {
+            if (entity == null) return null;
+
+            return new ProjectTask(
+                entity.Id,
+                entity.ProjectId,
+                entity.Stage,
+                entity.Order,
+                entity.Title,
+                entity.Start,
+                entity.End,
+                entity.IsDeleted,
+                entity.CreatedAt.UtcDateTime,
+                entity.UpdatedAt.UtcDateTime
             );
         }
     }
