@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using TestWork.Data.Context;
 using TestWork.Data.Entities;
 using TestWork.Data.Extensions;
@@ -19,7 +20,7 @@ namespace TestWork.Data.Repositories
         }
 
 
-        public async Task<PagedResult<Project>> GetAsync(
+        public async Task<PagedResult<ProjectReadModel>> GetAsync(
             string? name,
             ProjectStatus? status,
             Guid? supervisorId,
@@ -32,8 +33,23 @@ namespace TestWork.Data.Repositories
 
             var query = context.Projects
                 .AsNoTracking()
+                .Select(entity => new ProjectReadModel
+                {
+                    Id = entity.Id,
+                    Name = entity.Name,
+                    StartDate = entity.StartDate,
+                    EndDate = entity.EndDate,
+                    SupervisorId = entity.SupervisorId,
+                    ExecutorId = entity.ExecutorId,
+                    Status = entity.Status,
+                    IsDeleted = entity.IsDeleted,
+                    StagesCount = entity.Stages.Count,
+                    TasksCount = entity.Tasks.Count,
+                    CreatedAt = entity.CreatedAt.DateTime,
+                    UpdatedAt = entity.UpdatedAt.DateTime
+                })
                 .AsQueryable();
-
+            
             if (!string.IsNullOrEmpty(name))
             {
                 query = query.Where(o => EF.Functions.ILike(o.Name, $"%{name}%"));
@@ -56,14 +72,7 @@ namespace TestWork.Data.Repositories
                 pageIndex,
                 pageSize);
 
-            var entities = pagedResult.Items
-                .Select(e => Map(e)!)
-                .ToList();
-
-            return new PagedResult<Project>(
-                Items: entities,
-                Total: pagedResult.Total
-            );
+            return pagedResult;
         }
 
         public async Task<Project?> GetByIdAsync(Guid projectId)
@@ -100,7 +109,7 @@ namespace TestWork.Data.Repositories
 
             for (int stage = 0; stage < project.Stages.Count; stage++)
             {
-                entity.Stages.Add(new ProjectStageEntity
+                entity.Stages?.Add(new ProjectStageEntity
                 {
                     ProjectId = project.Id,
                     Stage = stage,
@@ -118,7 +127,7 @@ namespace TestWork.Data.Repositories
             await using var context = new DatabaseContext(_contextBuilder.Options);
 
             var entity = await context.Projects
-                .Include(o=>o.Stages)
+                .Include(o => o.Stages)
                 .FirstAsync(o => o.Id == project.Id);
 
             entity.Name = project.Name;
@@ -132,7 +141,7 @@ namespace TestWork.Data.Repositories
             entity.IsDeleted = project.IsDeleted;
             entity.CreatedAt = project.CreatedAt;
             entity.UpdatedAt = project.UpdatedAt;
-            
+
             entity.Stages = project.Stages.Select((stageName, i) => new ProjectStageEntity
             {
                 ProjectId = project.Id,

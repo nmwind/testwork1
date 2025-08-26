@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using TestWork.Data.Entities;
 using TestWork.Entities;
+using TestWork.ReadModels;
 
 namespace TestWork.Data.Context;
 
@@ -18,7 +19,7 @@ public class DatabaseContext : DbContext
     public DatabaseContext(DbContextOptions<DatabaseContext> options)
         : base(options)
     {
-         // Database.EnsureDeleted();
+    //      Database.EnsureDeleted();
         Database.EnsureCreated();
     }
 
@@ -28,6 +29,7 @@ public class DatabaseContext : DbContext
 
         BuildUsers(modelBuilder);
         BuildProjects(modelBuilder);
+        // BuildProjectReadModel(modelBuilder);
         BuildProjectStages(modelBuilder);
         BuildProjectTasks(modelBuilder);
 
@@ -41,9 +43,60 @@ public class DatabaseContext : DbContext
                 Email = "admin@gmail.com",
                 PasswordHash = "admin",
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTimeOffset.Now
+                UpdatedAt = DateTime.UtcNow
             }
         ]);
+
+        Guid projectId = Guid.NewGuid();
+        modelBuilder.Entity<ProjectEntity>().HasData([
+            new ProjectEntity
+            {
+                Id = projectId,
+                Description = "",
+                Risks = "",
+                Name = "virtual project",
+                Status = ProjectStatus.PreProject,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                StartDate = DateTime.UtcNow,
+                EndDate = DateTime.UtcNow
+            }
+        ]);
+
+        modelBuilder.Entity<ProjectStageEntity>().HasData([
+            new ProjectStageEntity
+            {
+                ProjectId = projectId,
+                Stage = 0,
+                Title = "stage 1",
+            }
+        ]);
+        
+        modelBuilder.Entity<ProjectTaskEntity>().HasData([
+            new ProjectTaskEntity
+            {
+                Id = Guid.NewGuid(),
+                ProjectId = projectId,
+                Stage = 0,
+                Order = 0,
+                Title = "Task 1",
+                Start = DateOnly.FromDateTime(DateTime.UtcNow),
+                End = DateOnly.FromDateTime(DateTime.UtcNow),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                IsDeleted = false,
+            }
+        ]);
+    }
+
+    private void BuildProjectReadModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder
+            .Entity<ProjectReadModel>(entity =>
+            {
+                entity.HasNoKey();
+                entity.ToView("lv_projects");
+            });
     }
 
     private static void BuildUsers(ModelBuilder builder)

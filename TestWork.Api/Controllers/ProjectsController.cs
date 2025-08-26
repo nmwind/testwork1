@@ -45,45 +45,37 @@ public class ProjectsController : ControllerBase
         int pageIndex,
         int pageSize)
     {
-        try
-        {
-            var result = await _projectsRepository.GetAsync(name, status, supervisorId, projectBy,
-                sortDirection switch
-                {
-                    SortDirection.Asc => true,
-                    SortDirection.Desc => false,
-                    _ => true
-                },
-                pageIndex,
-                pageSize);
-
-            var model = new PagedResponse<ProjectListItemModel>
+        var result = await _projectsRepository.GetAsync(name, status, supervisorId, projectBy,
+            sortDirection switch
             {
-                Total = result.Total,
-                Items = result.Items
-                    .Select(project => new ProjectListItemModel
-                    {
-                        Id = project.Id,
-                        Name = project.Name,
-                        Description = project.Description,
-                        Risks = project.Risks,
-                        StartDate = project.StartDate,
-                        EndDate = project.EndDate,
-                        SupervisorId = project.SupervisorId,
-                        ExecutorId = project.ExecutorId,
-                        Status = project.Status,
-                        IsDeleted = project.IsDeleted,
-                        CreatedAt = project.CreatedAt,
-                        UpdatedAt = project.UpdatedAt,
-                    }).ToList()
-            };
-            return Ok(result);
-        }
-        catch (Exception exception)
+                SortDirection.Asc => true,
+                SortDirection.Desc => false,
+                _ => true
+            },
+            pageIndex,
+            pageSize);
+
+        var model = new PagedResponse<ProjectListItemModel>
         {
-            // _logger.LogError(exception, "An error occurred while getting users");
-            return BadRequest(ErrorResponse.UnexpectedError());
-        }
+            Total = result.Total,
+            Items = result.Items
+                .Select(project => new ProjectListItemModel
+                {
+                    Id = project.Id,
+                    Name = project.Name,
+                    StartDate = project.StartDate,
+                    EndDate = project.EndDate,
+                    SupervisorId = project.SupervisorId,
+                    ExecutorId = project.ExecutorId,
+                    Status = project.Status,
+                    Stages = project.StagesCount,
+                    Tasks = project.TasksCount,
+                    IsDeleted = project.IsDeleted,
+                    CreatedAt = project.CreatedAt,
+                    UpdatedAt = project.UpdatedAt,
+                }).ToList()
+        };
+        return Ok(model);
     }
 
     /// <summary>
@@ -197,7 +189,7 @@ public class ProjectsController : ControllerBase
             model.SupervisorId,
             model.ExecutorId
         );
-        
+
         project.UpdateStages(model.Stages);
 
         await _projectsRepository.UpdateAsync(project);
@@ -206,7 +198,7 @@ public class ProjectsController : ControllerBase
 
         return NoContent();
     }
-    
+
     private async Task UpdateProjectTasks(ProjectUpdateModel model)
     {
         var tasks = await _projectTasksRepository.GetAsync(model.Id);
@@ -248,7 +240,7 @@ public class ProjectsController : ControllerBase
             await _projectTasksRepository.UpdateAsync(task);
         }
     }
-    
+
     /// <summary>
     /// Deletes project.
     /// </summary>

@@ -5,7 +5,7 @@ namespace TestWork.Repositories;
 
 public interface IProjectsRepository
 {
-    Task<PagedResult<Project>> GetAsync(
+    Task<PagedResult<ProjectReadModel>> GetAsync(
         string? name,
         ProjectStatus? status,
         Guid? supervisorId,
