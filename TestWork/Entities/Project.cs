@@ -16,6 +16,9 @@ public class Project
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
+    private List<string> _stages;
+    public IReadOnlyList<string> Stages => _stages.AsReadOnly();
+
     public Project(
         Guid id,
         string name,
@@ -28,7 +31,8 @@ public class Project
         ProjectStatus status,
         bool isDeleted,
         DateTime createdAt,
-        DateTime updatedAt)
+        DateTime updatedAt,
+        IReadOnlyList<string> stages)
     {
         Id = id;
         Name = name;
@@ -42,12 +46,8 @@ public class Project
         IsDeleted = isDeleted;
         CreatedAt = createdAt;
         UpdatedAt = updatedAt;
+        _stages = stages.ToList();
     }
-    //
-    // public Project Create()
-    // {
-    //     return new Project();
-    // }
 
     public static Project Create(string name,
         string description,
@@ -70,7 +70,8 @@ public class Project
             ProjectStatus.PreProject,
             false,
             created,
-            created);
+            created,
+            new List<string>());
     }
 
     public void Update(
@@ -89,7 +90,15 @@ public class Project
 
         UpdatedAt = DateTime.UtcNow;
     }
-    
+
+    public void UpdateStages(IReadOnlyCollection<string> stages)
+    {
+        _stages.Clear();
+        _stages.AddRange(stages);
+        
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public virtual bool Delete()
     {
         if (!IsDeleted)

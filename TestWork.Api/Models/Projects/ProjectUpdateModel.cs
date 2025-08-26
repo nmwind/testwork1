@@ -8,6 +8,6 @@ public class ProjectUpdateModel
     public string Name { get; set; } = null!;
     public Guid? SupervisorId { get; set; }
     public Guid? ExecutorId { get; set; }
-    public IReadOnlyCollection<ProjectStageModel> Stages { get; set; } = null!;
+    public IReadOnlyCollection<string> Stages { get; set; } = null!;
     public IReadOnlyCollection<ProjectTaskCreateOrUpdateModel> Tasks { get; set; } = null!;
 }

@@ -98,6 +98,16 @@ namespace TestWork.Data.Repositories
                 CreatedAt = project.CreatedAt,
             };
 
+            for (int stage = 0; stage < project.Stages.Count; stage++)
+            {
+                entity.Stages.Add(new ProjectStageEntity
+                {
+                    ProjectId = project.Id,
+                    Stage = stage,
+                    Title = project.Stages[stage]
+                });
+            }
+
             context.Projects.Add(entity);
 
             await context.SaveChangesAsync();
@@ -108,6 +118,7 @@ namespace TestWork.Data.Repositories
             await using var context = new DatabaseContext(_contextBuilder.Options);
 
             var entity = await context.Projects
+                .Include(o=>o.Stages)
                 .FirstAsync(o => o.Id == project.Id);
 
             entity.Name = project.Name;
@@ -121,6 +132,13 @@ namespace TestWork.Data.Repositories
             entity.IsDeleted = project.IsDeleted;
             entity.CreatedAt = project.CreatedAt;
             entity.UpdatedAt = project.UpdatedAt;
+            
+            entity.Stages = project.Stages.Select((stageName, i) => new ProjectStageEntity
+            {
+                ProjectId = project.Id,
+                Stage = i,
+                Title = stageName,
+            }).ToList();
 
             await context.SaveChangesAsync();
         }
@@ -141,7 +159,11 @@ namespace TestWork.Data.Repositories
                 entity.Status,
                 entity.IsDeleted,
                 entity.CreatedAt.UtcDateTime,
-                entity.UpdatedAt.UtcDateTime
+                entity.UpdatedAt.UtcDateTime,
+                entity.Stages?
+                    .OrderBy(stage => stage.Stage)
+                    .Select(stage => stage.Title)
+                    .ToList() ?? []
             );
         }
     }

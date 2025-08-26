@@ -15,7 +15,7 @@ public class ProjectModel
     public Guid? SupervisorId { get; set; }
     public Guid? ExecutorId { get; set; }
     public ProjectStatus Status { get; set; }
-    public required IReadOnlyCollection<ProjectStageModel> Stages { get; set; }
+    public required IReadOnlyCollection<string> Stages { get; set; }
     public required IReadOnlyCollection<ProjectTaskModel> Tasks { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime CreatedAt { get; set; }

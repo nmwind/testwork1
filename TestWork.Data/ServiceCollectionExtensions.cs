@@ -24,7 +24,6 @@ namespace TestWork.Data
             services.AddTransient<IUsersRepository, UsersRepository>();
             services.AddTransient<IProjectsRepository, ProjectsRepository>();
             services.AddTransient<IProjectTasksRepository, ProjectTasksRepository>();
-            services.AddTransient<IProjectStagesRepository, ProjectStagesRepository>();
 
             return services;
         }

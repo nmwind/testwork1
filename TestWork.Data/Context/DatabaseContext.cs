@@ -9,10 +9,10 @@ public class DatabaseContext : DbContext
 {
     internal const string SchemaName = "testwork";
 
-    internal DbSet<UserEntity> Users { get; set; }
-    internal DbSet<ProjectEntity> Projects { get; set; }
-    internal DbSet<ProjectStageEntity> Stages { get; set; }
-    internal DbSet<ProjectTaskEntity> Tasks { get; set; }
+    internal DbSet<UserEntity> Users { get; set; }= null!;
+    internal DbSet<ProjectEntity> Projects { get; set; }= null!;
+    internal DbSet<ProjectStageEntity> Stages { get; set; } = null!;
+    internal DbSet<ProjectTaskEntity> Tasks { get; set; }= null!;
 
 
     public DatabaseContext(DbContextOptions<DatabaseContext> options)
@@ -71,7 +71,9 @@ public class DatabaseContext : DbContext
                 .HasForeignKey(o => o.ProjectId);
             entity.HasMany(o => o.Stages)
                 .WithOne()
-                .HasForeignKey(o => o.ProjectId);
+                .HasForeignKey(o => o.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
             entity.ToTable("projects");
         });
     }
@@ -90,8 +92,7 @@ public class DatabaseContext : DbContext
     {
         builder.Entity<ProjectStageEntity>(entity =>
         {
-            entity.HasKey(o => o.Id);
-            // entity.HasIndex(o => new { o.Stage, o.ProjectId }).IsUnique();
+            entity.HasKey(o => new { o.Stage, o.ProjectId });
 
             entity.ToTable("stages");
         });

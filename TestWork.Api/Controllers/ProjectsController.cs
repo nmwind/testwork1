@@ -16,17 +16,14 @@ namespace TestWork.Api.Controllers;
 public class ProjectsController : ControllerBase
 {
     private readonly IProjectsRepository _projectsRepository;
-    private readonly IProjectStagesRepository _projectStagesRepository;
     private readonly IProjectTasksRepository _projectTasksRepository;
 
     public ProjectsController(
         IProjectsRepository projectsRepository,
-        IProjectStagesRepository projectStagesRepository,
         IProjectTasksRepository projectTasksRepository
     )
     {
         _projectsRepository = projectsRepository;
-        _projectStagesRepository = projectStagesRepository;
         _projectTasksRepository = projectTasksRepository;
     }
 
@@ -108,7 +105,6 @@ public class ProjectsController : ControllerBase
         if (project == null)
             return NotFound();
 
-        var stages = await _projectStagesRepository.GetAsync(projectId);
         var tasks = await _projectTasksRepository.GetAsync(projectId);
         var model = new ProjectModel
         {
@@ -121,12 +117,7 @@ public class ProjectsController : ControllerBase
             SupervisorId = project.SupervisorId,
             ExecutorId = project.ExecutorId,
             Status = project.Status,
-            Stages = stages.Select(stage => new ProjectStageModel
-            {
-                Id = stage.Id,
-                Stage = stage.Stage,
-                Name = stage.Title
-            }).ToList(),
+            Stages = project.Stages,
             Tasks = tasks.Select(task => new ProjectTaskModel
             {
                 Id = task.Id,
@@ -206,47 +197,16 @@ public class ProjectsController : ControllerBase
             model.SupervisorId,
             model.ExecutorId
         );
+        
+        project.UpdateStages(model.Stages);
 
         await _projectsRepository.UpdateAsync(project);
-
-        await UpdateProjectStages(model);
 
         await UpdateProjectTasks(model);
 
         return NoContent();
     }
-
-    private async Task UpdateProjectStages(ProjectUpdateModel model)
-    {
-        var stages = await _projectStagesRepository.GetAsync(model.Id);
-
-        var toAdd = model.Stages.Where(v => !v.Id.HasValue)
-            .ToList();
-        var toRemove = stages.Where(s => model.Stages.All(m => m.Id != s.Id))
-            .ToList();
-        var toUpdate = stages.Where(s => toRemove.All(m => m.Id != s.Id))
-            .ToList();
-
-        foreach (var stage in toRemove)
-        {
-            await _projectStagesRepository.DeleteAsync(stage.Id);
-        }
-
-        foreach (var stage in toAdd)
-        {
-            var newStage = ProjectStage.Create(model.Id, stage.Stage, stage.Name);
-            await _projectStagesRepository.InsertAsync(newStage);
-        }
-
-        foreach (var stage in toUpdate)
-        {
-            var modelStage = model.Stages.Single(m => m.Id == stage.Id);
-            stage.Update(modelStage.Stage, modelStage.Name);
-            await _projectStagesRepository.UpdateAsync(stage);
-        }
-    }
-
-
+    
     private async Task UpdateProjectTasks(ProjectUpdateModel model)
     {
         var tasks = await _projectTasksRepository.GetAsync(model.Id);
@@ -311,23 +271,6 @@ public class ProjectsController : ControllerBase
             await _projectsRepository.UpdateAsync(project);
 
         return NoContent();
-    }
-
-    /// <summary>
-    /// Retrieves a collection of project stages.
-    /// </summary>
-    /// <param name="projectId">The project identifier.</param>
-    /// <returns>A collection of project stages.</returns>
-    /// <response code="200">A collection of project stages.</response>
-    /// <response code="400">An unexpected error.</response>
-    [HttpGet("{projectId:guid}/stages")]
-    [ProducesResponseType(typeof(ProjectStageModel[]), (int)HttpStatusCode.OK)]
-    [ProducesResponseType((int)HttpStatusCode.BadRequest)]
-    public async Task<IActionResult> ListAsync(
-        [FromRoute] Guid projectId)
-    {
-        throw new NotImplementedException();
-        return Ok();
     }
 
     /// <summary>
