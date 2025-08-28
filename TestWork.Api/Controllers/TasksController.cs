@@ -16,17 +16,20 @@ namespace TestWork.Api.Controllers;
 public class TasksController : ControllerBase
 {
     private readonly IProjectTasksRepository _tasksRepository;
+    private readonly IProjectsRepository _projectsRepository;
 
     public TasksController(
-        IProjectTasksRepository tasksRepository
+        IProjectTasksRepository tasksRepository,
+        IProjectsRepository projectsRepository
     )
     {
         _tasksRepository = tasksRepository;
+        _projectsRepository = projectsRepository;
     }
-    
+
     
     /// <summary>
-    /// Deletes task.
+    /// Mark task as deleted.
     /// </summary>
     /// <param name="taskId">The task identifier.</param>
     /// <response code="204">Task deleted.</response>
@@ -48,5 +51,4 @@ public class TasksController : ControllerBase
 
         return NoContent();
     }
-    
 }

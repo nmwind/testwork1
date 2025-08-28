@@ -172,9 +172,9 @@ public class ProjectsController : ControllerBase
     /// </summary>
     /// <param name="model">The project update information.</param>
     /// <returns></returns>
-    /// <response code="204">Order successfully updated.</response>
+    /// <response code="204">Project successfully updated.</response>
     /// <response code="400">An unexpected error.</response>
-    /// <response code="404">Order not found.</response>
+    /// <response code="404">Project not found.</response>
     [HttpPut]
     [ProducesResponseType((int)HttpStatusCode.NoContent)]
     [ProducesResponseType((int)HttpStatusCode.BadRequest)]
@@ -192,6 +192,12 @@ public class ProjectsController : ControllerBase
         );
 
         project.UpdateStages(model.Stages);
+
+        if (model.Tasks != null)
+        {
+            //some logic to set all tasks by one request. probably it's a good idea like present at screenshot  
+            //project.SetTasks(model.Tasks.Select());
+        }
 
         await _projectsRepository.UpdateAsync(project);
 
@@ -223,19 +229,139 @@ public class ProjectsController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieves a collection of project tasks.
+    /// Creates task.
     /// </summary>
     /// <param name="projectId">The project identifier.</param>
-    /// <returns>A collection of project tasks.</returns>
-    /// <response code="200">A collection of project tasks.</response>
+    /// <param name="model">The task creation information.</param>
+    /// <returns>Created task result.</returns>
+    /// <response code="200">Created task result.</response>
     /// <response code="400">An unexpected error.</response>
-    [HttpGet("{projectId:guid}/tasks")]
-    [ProducesResponseType(typeof(ProjectTaskListItemModel[]), (int)HttpStatusCode.OK)]
+    /// <response code="404">A project not found.</response>
+    [HttpPost("{projectId:guid}/tasks")]
+    [ProducesResponseType(typeof(ProjectTaskCreateResultModel), (int)HttpStatusCode.OK)]
     [ProducesResponseType((int)HttpStatusCode.BadRequest)]
-    public async Task<IActionResult> GetTasksAsync(
-        [FromRoute] Guid projectId)
+    public async Task<IActionResult> AddTaskAsync(
+        [FromRoute] Guid projectId,
+        [FromBody] ProjectTaskCreateModel model)
     {
-        throw new NotImplementedException();
-        return Ok();
+        try
+        {
+            var project = await _projectsRepository.GetByIdAsync(projectId);
+
+            if (project == null)
+                return NotFound();
+
+            var task = ProjectTask.Create(project.Id,
+                model.Stage,
+                model.Order,
+                model.Title,
+                model.Start,
+                model.End);
+
+            project.AddTask(task);
+
+            await _projectsRepository.UpdateAsync(project);
+
+            return Ok(new ProjectTaskCreateResultModel { Id = task.Id });
+        }
+        catch (Exception exception)
+        {
+            throw exception;
+            //log error
+            //return BadRequest(ErrorResponse.UnexpectedError());
+        }
+    }
+
+    /// <summary>
+    /// Updates task.
+    /// </summary>
+    /// <param name="projectId">The project identifier</param>
+    /// <param name="model">The task update information.</param>
+    /// <returns></returns>
+    /// <response code="204">Task successfully updated.</response>
+    /// <response code="400">An unexpected error.</response>
+    /// <response code="404">Task not found.</response>
+    [HttpPut("{projectId:guid}/tasks")]
+    [ProducesResponseType((int)HttpStatusCode.NoContent)]
+    [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+    [ProducesResponseType((int)HttpStatusCode.NotFound)]
+    public async Task<IActionResult> UpdateTaskAsync(
+        [FromRoute] Guid projectId,
+        [FromBody] ProjectTaskUpdateModel model)
+    {
+        try
+        {
+            var project = await _projectsRepository.GetByIdAsync(projectId);
+
+            if (project == null)
+                return NotFound("Project not found");
+
+            var task = project.GetTaskById(model.Id);
+            if (task == null)
+            {
+                if (task == null)
+                    return NotFound("Project has no contains the task");
+            }
+
+            task.Update(
+                model.Stage,
+                model.Order,
+                model.Title,
+                model.Start,
+                model.End);
+
+            await _projectsRepository.UpdateAsync(project);
+
+            return NoContent();
+        }
+        catch (Exception exception)
+        {
+            throw exception;
+            //log
+        }
+    }
+
+    /// <summary>
+    /// Deletes task.
+    /// </summary>
+    /// <param name="projectId">The project identifier</param>
+    /// <param name="taskId">The task identifier.</param>
+    /// <response code="204">Task deleted.</response>
+    /// <response code="400">An unexpected error.</response>
+    /// <response code="404">Project not found by provided identifier.</response>
+    /// <response code="404">Task not found by provided identifier.</response>
+    [HttpDelete("{projectId:guid}/{taskId:guid}")]
+    [ProducesResponseType((int)HttpStatusCode.NoContent)]
+    [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+    [ProducesResponseType((int)HttpStatusCode.NotFound)]
+    public async Task<IActionResult> DeleteAsync(
+        [FromRoute] Guid projectId,
+        [FromRoute] Guid taskId)
+    {
+        try
+        {
+            var project = await _projectsRepository.GetByIdAsync(projectId);
+
+            if (project == null)
+                return NotFound("Project not found");
+
+            var task = project.GetTaskById(taskId);
+            if (task == null)
+            {
+                if (task == null)
+                    return NotFound("Project has no contains the task");
+            }
+
+            project.DeleteTask(taskId);
+
+            await _projectsRepository.UpdateAsync(project);
+
+            return NoContent();
+        }
+        catch (Exception exception)
+        {
+            throw exception;
+            //log
+        }
     }
 }

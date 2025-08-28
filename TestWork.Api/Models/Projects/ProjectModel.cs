@@ -1,5 +1,4 @@
-﻿using TestWork.Api.Models.Tasks;
-using TestWork.Entities;
+﻿using TestWork.Entities;
 
 namespace TestWork.Api.Models.Projects;
 

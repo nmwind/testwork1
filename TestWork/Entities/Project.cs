@@ -104,12 +104,40 @@ public class Project
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateTasks(IReadOnlyCollection<ProjectTask> tasks)
+    
+    public void SetTasks(IReadOnlyCollection<ProjectTask> tasks)
     {
         _tasks.Clear();
         _tasks.AddRange(tasks);
-
+        
         UpdatedAt = DateTime.UtcNow;
+    }
+    
+    public void AddTask(ProjectTask task)
+    {
+        var exist = GetTaskById(task.Id);
+        if (exist == null)
+        {
+            _tasks.Add(task);
+            
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public void DeleteTask(Guid taskId)
+    {
+        var task = GetTaskById(taskId);
+        if (task != null)
+        {
+            _tasks.Remove(task);
+            
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+    
+    public ProjectTask? GetTaskById(Guid taskId)
+    {
+        return _tasks.FirstOrDefault(o => o.Id == taskId);
     }
 
     public virtual bool Delete()
@@ -139,4 +167,5 @@ public class Project
 
         return false;
     }
+
 }

@@ -1,5 +1,4 @@
-﻿using TestWork.Data.Entities;
-
+﻿
 namespace TestWork.Api.Models.Projects;
 
 public class ProjectUpdateModel
@@ -9,5 +8,5 @@ public class ProjectUpdateModel
     public Guid? SupervisorId { get; set; }
     public Guid? ExecutorId { get; set; }
     public IReadOnlyCollection<string> Stages { get; set; } = null!;
-    public IReadOnlyCollection<ProjectTaskCreateOrUpdateModel> Tasks { get; set; } = null!;
+    public IReadOnlyCollection<ProjectTaskCreateOrUpdateModel>? Tasks { get; set; }
 }
